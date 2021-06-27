@@ -1,8 +1,17 @@
+#Gets the credentials for AWS for .tfvars file
+variable "key" {
+  type = string
+}
+
+variable "password" {
+  type = string
+}
+
 # Configure the AWS Provider
 provider "aws" {
   region = "us-east-1"
-  access_key = "???"
-  secret_key = "???"
+  access_key = var.key
+  secret_key = var.password
 }
 
 # Create a VPC
@@ -52,6 +61,7 @@ data "aws_availability_zones" "available" {
 resource "aws_subnet" "test_subnet1" {
   vpc_id     = aws_vpc.test.id
   cidr_block = "10.0.1.0/24"
+  map_public_ip_on_launch = "true"
   availability_zone = data.aws_availability_zones.available.names[0]
 
   tags = {
@@ -62,11 +72,26 @@ resource "aws_subnet" "test_subnet1" {
 resource "aws_subnet" "test_subnet2" {
   vpc_id     = aws_vpc.test.id
   cidr_block = "10.0.2.0/24"
+  map_public_ip_on_launch = "true"
   availability_zone = data.aws_availability_zones.available.names[1]
 
   tags = {
     Name = "TestSubnet2"
   }
+}
+
+# Creates Public Route Table
+resource "aws_route_table" "test" {
+  vpc_id = aws_vpc.test.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.test.id
+  }
+}
+
+resource "aws_route_table_association" "test-rta" {
+  subnet_id      = aws_subnet.test_subnet1.id
+  route_table_id = aws_route_table.test.id
 }
 
 # Builds an ALB 
