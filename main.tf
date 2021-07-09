@@ -1,9 +1,13 @@
-#Gets the credentials for AWS for .tfvars file
+#Gets the credentials for AWS from .tfvars file
 variable "key" {
   type = string
 }
 
 variable "password" {
+  type = string
+}
+
+variable "key_name" {
   type = string
 }
 
@@ -17,6 +21,7 @@ provider "aws" {
 # Create a VPC
 resource "aws_vpc" "test" {
   cidr_block       = "10.0.0.0/16"
+  enable_dns_hostnames = true
 
   tags = {
     Name = "TestVPC"
@@ -42,7 +47,15 @@ resource "aws_security_group" "test" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = [aws_vpc.test.cidr_block]
+    cidr_blocks = [aws_vpc.test.cidr_block,"0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.test.cidr_block,"0.0.0.0/0"]
   }
 
   egress {
@@ -184,6 +197,7 @@ resource "aws_lb_target_group_attachment" "test" {
 # Creates an EC2 Server
 resource "aws_network_interface" "test" {
   subnet_id   = aws_subnet.test_subnet1.id
+  security_groups    = [aws_security_group.test.id]
 
   tags = {
     Name = "test_network_interface"
@@ -194,6 +208,7 @@ resource "aws_instance" "TestNginxServer" {
   ami                 = "ami-042e8287309f5df03"
   instance_type       = "t2.micro"
   depends_on          = [aws_internet_gateway.test]
+  key_name            = var.key_name
 
   network_interface {
     network_interface_id = aws_network_interface.test.id
